@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply antialiased text-slate-700 bg-white;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+/* Section label */
+.section-label {
+  @apply inline-block text-xs font-semibold uppercase tracking-widest text-primary-600 mb-4;
+}
+
+/* Badge */
+.badge {
+  @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur border border-slate-200/70 shadow-soft text-xs font-bold text-slate-700;
+}
+
+/* Fineprint */
+.fineprint {
+  @apply text-xs leading-relaxed text-slate-500;
+}
+
+/* Subtle grid pattern for backgrounds */
+.bg-grid-pattern {
+  background-image:
+    linear-gradient(to right, rgb(0 0 0 / 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(0 0 0 / 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.bg-dots-pattern {
+  background-image: radial-gradient(rgb(13 148 136 / 0.15) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
