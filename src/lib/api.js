@@ -1,10 +1,15 @@
 const API_BASE = import.meta.env.VITE_API_URL || ''
 const API_PATH = (API_BASE || '') + '/api/expert-intake'
 
+function isJsonResponse(res) {
+  const ct = res.headers.get('content-type') || ''
+  return ct.includes('application/json')
+}
+
 export async function getSubmissions() {
   try {
-    const res = await fetch(API_PATH || '/api/expert-intake')
-    if (!res.ok) return null
+    const res = await fetch(API_PATH || '/api/expert-intake', { cache: 'no-store' })
+    if (!res.ok || !isJsonResponse(res)) return null
     return await res.json()
   } catch {
     return null
@@ -16,10 +21,14 @@ export async function submitExpertIntake(formData) {
     const res = await fetch(API_PATH || '/api/expert-intake', {
       method: 'POST',
       body: formData,
+      cache: 'no-store',
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       return { ok: false, error: err.error || res.statusText }
+    }
+    if (!isJsonResponse(res)) {
+      return { ok: false, error: 'API unavailable', fallback: true }
     }
     const data = await res.json()
     return { ok: true, data }
@@ -97,9 +106,9 @@ export async function deleteSubmission(id) {
     try {
       const res = await fetch(`${API_PATH}/${id}`, {
         method: 'DELETE',
+        cache: 'no-store',
       })
-      const contentType = res.headers.get('content-type') || ''
-      if (res.ok && contentType.includes('application/json')) {
+      if (res.ok && isJsonResponse(res)) {
         await res.json()
         return { ok: true }
       }
