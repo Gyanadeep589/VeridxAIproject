@@ -1,5 +1,8 @@
-const API_BASE = import.meta.env.VITE_API_URL || ''
-const API_PATH = (API_BASE || '') + '/api/expert-intake'
+// const API_BASE = import.meta.env.VITE_API_URL || ''
+// const API_PATH = (API_BASE || '') + '/api/expert-intake'
+
+const API_PATH = '/api/expert-intake'
+
 
 function isJsonResponse(res) {
   const ct = res.headers.get('content-type') || ''
