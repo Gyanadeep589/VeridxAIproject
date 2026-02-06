@@ -43,18 +43,26 @@ export async function submitExpertIntake(formData) {
       cache: 'no-store',
     })
 
+    if (res.ok && isJsonResponse(res)) {
+      return { ok: true, data: await res.json() }
+    }
+
+    if (!res.ok && (res.status === 404 || res.status === 405)) {
+      return { ok: false, error: 'API unavailable', fallback: true }
+    }
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       return { ok: false, error: err.error || res.statusText }
     }
 
     if (!isJsonResponse(res)) {
-      return { ok: false, error: 'Invalid API response' }
+      return { ok: false, error: 'API unavailable', fallback: true }
     }
 
     return { ok: true, data: await res.json() }
   } catch (e) {
-    return { ok: false, error: e.message }
+    return { ok: false, error: e.message, fallback: true }
   }
 }
 
@@ -155,14 +163,28 @@ export async function deleteSubmission(id) {
       cache: 'no-store',
     })
 
+    if (res.ok && isJsonResponse(res)) {
+      await res.json()
+      return { ok: true }
+    }
+
+    if (!res.ok && (res.status === 404 || res.status === 405)) {
+      const list = getLocalSubmissions()
+      const filtered = list.filter((item) => item.id !== id)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+      return { ok: true }
+    }
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       return { ok: false, error: err.error || res.statusText }
     }
 
+    const list = getLocalSubmissions()
+    const filtered = list.filter((item) => item.id !== id)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
     return { ok: true }
   } catch (e) {
-    // Local fallback
     try {
       const list = getLocalSubmissions()
       const filtered = list.filter((item) => item.id !== id)
