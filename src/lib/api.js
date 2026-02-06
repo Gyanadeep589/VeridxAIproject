@@ -98,16 +98,27 @@ export async function deleteSubmission(id) {
       const res = await fetch(`${API_PATH}/${id}`, {
         method: 'DELETE',
       })
+      const contentType = res.headers.get('content-type') || ''
+      if (res.ok && contentType.includes('application/json')) {
+        await res.json()
+        return { ok: true }
+      }
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         return { ok: false, error: err.error || res.statusText }
       }
-      return { ok: true }
+      throw new Error('Invalid API response')
     } catch (e) {
-      return { ok: false, error: e.message, fallback: true }
+      try {
+        const list = getLocalSubmissions()
+        const filtered = list.filter((item) => item.id !== id)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+        return { ok: true }
+      } catch (localErr) {
+        return { ok: false, error: e.message || 'Delete failed', fallback: true }
+      }
     }
   }
-  // Fallback to localStorage
   try {
     const list = getLocalSubmissions()
     const filtered = list.filter((item) => item.id !== id)
