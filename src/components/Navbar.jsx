@@ -15,6 +15,7 @@ export default function Navbar() {
   const location = useLocation()
 
   const isIntakePage = location.pathname === '/expert-intake'
+  const isAdminPage = location.pathname === '/admin'
   const isSubmissionsPage = location.pathname === '/submissions'
 
   const handleLogoClick = (e) => {
@@ -66,7 +67,21 @@ export default function Navbar() {
               </li>
             ))}
 
-            {/* Submissions BEFORE Contact */}
+            {/* Admin - between Expert Intake and Submissions */}
+            <li>
+              <Link
+                to="/admin"
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  isAdminPage
+                    ? 'text-primary-600 bg-primary-50'
+                    : 'text-slate-600 hover:text-primary-600 hover:bg-primary-50/80'
+                }`}
+              >
+                Admin
+              </Link>
+            </li>
+
+            {/* Submissions */}
             <li>
               <Link
                 to="/submissions"
@@ -137,7 +152,22 @@ export default function Navbar() {
                 </li>
               ))}
 
-              {/* Submissions BEFORE Contact */}
+              {/* Admin - between Expert Intake and Submissions */}
+              <li>
+                <Link
+                  to="/admin"
+                  onClick={() => setOpen(false)}
+                  className={`block py-3 px-4 rounded-xl font-semibold ${
+                    isAdminPage
+                      ? 'text-primary-600 bg-primary-50'
+                      : 'text-slate-700 hover:bg-primary-50'
+                  }`}
+                >
+                  Admin
+                </Link>
+              </li>
+
+              {/* Submissions */}
               <li>
                 <Link
                   to="/submissions"

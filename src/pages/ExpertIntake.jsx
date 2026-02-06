@@ -155,7 +155,7 @@ export default function ExpertIntake() {
                 <li>• Engagements scoped to specific cases and questions</li>
                 <li>• Materials and discussions handled confidentially</li>
               </ul>
-              <p className="mt-4 fineprint">
+              <p className="mt-4 fine-print">
                 Completing this form does not create an engagement, attorney-client
                 relationship, or guarantee future work.
               </p>

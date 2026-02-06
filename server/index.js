@@ -4,6 +4,7 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
+import { PDFParse } from 'pdf-parse'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DATA_DIR = path.join(__dirname, 'data')
@@ -81,7 +82,7 @@ app.post('/api/expert-intake', upload.single('cv'), (req, res) => {
 // GET /api/expert-intake — list all submissions
 app.get('/api/expert-intake', (req, res) => {
   try {
-    const list = readSubmissions().map(({ id, name, phone, email, cvFileName, submittedAt }) => ({
+    const list = readSubmissions().map(({ id, name, phone, email, cvFileName, submittedAt, description, documentSummary }) => ({
       id,
       name,
       phone,
@@ -89,8 +90,27 @@ app.get('/api/expert-intake', (req, res) => {
       cvFileName,
       submittedAt,
       hasFile: true,
+      description: description || null,
+      documentSummary: documentSummary || null,
     }))
     res.json(list)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// PATCH /api/expert-intake/:id — update description and documentSummary
+app.patch('/api/expert-intake/:id', (req, res) => {
+  try {
+    const submissions = readSubmissions()
+    const index = submissions.findIndex((s) => s.id === req.params.id)
+    if (index === -1) return res.status(404).json({ error: 'Submission not found' })
+    const { description, documentSummary } = req.body || {}
+    if (description !== undefined) submissions[index].description = String(description).trim() || null
+    if (documentSummary !== undefined) submissions[index].documentSummary = String(documentSummary).trim() || null
+    writeSubmissions(submissions)
+    res.json(submissions[index])
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })
@@ -109,6 +129,81 @@ app.get('/api/expert-intake/:id/file', (req, res) => {
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// GET /api/expert-intake/:id/preview — serve file inline for preview (PDF/embed)
+app.get('/api/expert-intake/:id/preview', (req, res) => {
+  try {
+    const submissions = readSubmissions()
+    const record = submissions.find((s) => s.id === req.params.id)
+    if (!record?.cvStoredName) return res.status(404).json({ error: 'File not found' })
+    const filePath = path.join(UPLOADS_DIR, record.cvStoredName)
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' })
+    res.setHeader('Content-Disposition', 'inline')
+    res.sendFile(path.resolve(filePath))
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// GET /api/expert-intake/:id/thumbnail — PDF first page as PNG image
+app.get('/api/expert-intake/:id/thumbnail', async (req, res) => {
+  try {
+    const submissions = readSubmissions()
+    const record = submissions.find((s) => s.id === req.params.id)
+    if (!record?.cvStoredName) return res.status(404).json({ error: 'File not found' })
+    const filePath = path.join(UPLOADS_DIR, record.cvStoredName)
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' })
+    const isPdf = /\.pdf$/i.test(record.cvFileName || '')
+    if (!isPdf) return res.status(400).json({ error: 'Thumbnail only available for PDF files' })
+    const buffer = fs.readFileSync(filePath)
+    const parser = new PDFParse({ data: buffer })
+    const result = await parser.getScreenshot({ first: 1, desiredWidth: 400 })
+    await parser.destroy()
+    if (!result?.pages?.[0]?.data) return res.status(500).json({ error: 'Failed to generate thumbnail' })
+    res.setHeader('Content-Type', 'image/png')
+    res.send(result.pages[0].data)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: err.message || 'Server error' })
+  }
+})
+
+// GET /api/expert-intake/:id/summary — extract text from PDF (short preview, 500 chars)
+// GET /api/expert-intake/:id/summary?full=1 — extract complete text from all pages
+app.get('/api/expert-intake/:id/summary', async (req, res) => {
+  try {
+    const submissions = readSubmissions()
+    const record = submissions.find((s) => s.id === req.params.id)
+    if (!record?.cvStoredName) return res.status(404).json({ error: 'File not found' })
+    const filePath = path.join(UPLOADS_DIR, record.cvStoredName)
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' })
+    const isPdf = /\.pdf$/i.test(record.cvFileName || '')
+    if (!isPdf) return res.json({ summary: 'Summary not available for non-PDF documents.' })
+    const buffer = fs.readFileSync(filePath)
+    const parser = new PDFParse({ data: buffer })
+    const full = req.query.full === '1' || req.query.full === 'true'
+    let text
+    if (full) {
+      const info = await parser.getInfo({ parsePageInfo: false })
+      const totalPages = info?.total || 9999
+      const textResult = await parser.getText({ first: 1, last: totalPages })
+      text = (textResult?.text || '').trim()
+      text = text.replace(/\r\n|\r/g, '\n').replace(/[^\S\n]+/g, ' ')
+    } else {
+      const result = await parser.getText()
+      text = (result?.text || '').trim().replace(/\s+/g, ' ')
+    }
+    await parser.destroy()
+    const summary = full
+      ? (text || 'No text extracted.')
+      : (text.length > 500 ? text.slice(0, 500) + '…' : text || 'No text extracted.')
+    res.json({ summary })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: err.message || 'Server error' })
   }
 })
 
