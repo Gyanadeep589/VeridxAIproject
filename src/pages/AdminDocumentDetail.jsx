@@ -23,21 +23,26 @@ export default function AdminDocumentDetail() {
     let cancelled = false
     async function load() {
       const fromApi = await getSubmissions()
-      const list = Array.isArray(fromApi) ? fromApi : getLocalSubmissions()
+      const list = Array.isArray(fromApi) && fromApi.length > 0 ? fromApi : getLocalSubmissions()
       const found = list.find((d) => d.id === id)
       if (cancelled) return
       setDoc(found || null)
       if (found?.cvFileName?.toLowerCase().endsWith('.pdf') && found?.hasFile) {
         try {
           const url = `${getFileSummaryUrl(id)}?full=1&_=${Date.now()}`
-          const res = await fetch(url)
-          const data = res.ok ? await res.json() : {}
-          if (!cancelled) setFullSummary(data.summary || 'Unable to extract summary.')
+          const res = await fetch(url, { cache: 'no-store' })
+          const ct = res.headers.get('content-type') || ''
+          if (res.ok && ct.includes('application/json')) {
+            const data = await res.json()
+            if (!cancelled) setFullSummary(data.summary || 'Unable to extract summary.')
+          } else {
+            if (!cancelled) setFullSummary('Summary not available (API unavailable).')
+          }
         } catch {
-          if (!cancelled) setFullSummary('Unable to extract summary.')
+          if (!cancelled) setFullSummary('Summary not available (API unavailable).')
         }
       } else {
-        setFullSummary('Summary not available for non-PDF documents.')
+        setFullSummary(found?.hasFile ? 'Summary not available for non-PDF documents.' : 'Summary not available (local storage).')
       }
       setLoading(false)
     }
@@ -80,7 +85,7 @@ export default function AdminDocumentDetail() {
     )
   }
 
-  const thumbnailUrl = doc?.cvFileName?.toLowerCase().endsWith('.pdf') ? getFileThumbnailUrl(doc.id) : null
+  const thumbnailUrl = doc?.hasFile && doc?.cvFileName?.toLowerCase().endsWith('.pdf') ? getFileThumbnailUrl(doc.id) : null
 
   return (
     <div className="min-h-screen bg-medical-mist bg-grid-pattern pt-24 pb-20 px-4 sm:px-6 lg:px-8">

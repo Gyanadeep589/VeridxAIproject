@@ -43,28 +43,41 @@ export default function Admin() {
   const loadData = async () => {
     const fromApi = await getSubmissions()
 
-    if (Array.isArray(fromApi)) {
+    if (Array.isArray(fromApi) && fromApi.length > 0) {
       setList(fromApi)
 
       const next = {}
       for (const doc of fromApi) {
         if (doc?.cvFileName?.toLowerCase().endsWith('.pdf') && doc.hasFile) {
           try {
-            const res = await fetch(getFileSummaryUrl(doc.id))
-            next[doc.id] = res.ok
-              ? (await res.json()).summary || 'No text extracted.'
-              : 'Unable to extract summary.'
+            const res = await fetch(getFileSummaryUrl(doc.id), { cache: 'no-store' })
+            if (res.ok) {
+              const ct = res.headers.get('content-type') || ''
+              if (ct.includes('application/json')) {
+                const data = await res.json()
+                next[doc.id] = data.summary || 'No text extracted.'
+              } else {
+                next[doc.id] = 'Summary not available.'
+              }
+            } else {
+              next[doc.id] = 'Summary not available.'
+            }
           } catch {
-            next[doc.id] = 'Unable to extract summary.'
+            next[doc.id] = 'Summary not available.'
           }
         } else {
-          next[doc.id] = 'Summary not available for non-PDF documents.'
+          next[doc.id] = doc?.hasFile ? 'Summary not available for non-PDF documents.' : 'Summary not available (local storage).'
         }
       }
       setSummaries(next)
     } else {
       setList(getLocalSubmissions())
-      setSummaries({})
+      const local = getLocalSubmissions()
+      const next = {}
+      local.forEach((doc) => {
+        next[doc.id] = doc?.hasFile ? 'Summary not available for non-PDF documents.' : 'Summary not available (local storage).'
+      })
+      setSummaries(next)
     }
 
     setLoading(false)
@@ -128,7 +141,7 @@ export default function Admin() {
                   <DocumentPreview
                     doc={doc}
                     thumbnailUrl={
-                      doc?.cvFileName?.toLowerCase().endsWith('.pdf')
+                      doc?.hasFile && doc?.cvFileName?.toLowerCase().endsWith('.pdf')
                         ? getFileThumbnailUrl(doc.id)
                         : null
                     }

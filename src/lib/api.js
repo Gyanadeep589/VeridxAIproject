@@ -24,7 +24,7 @@ export async function getSubmissions() {
   try {
     const res = await fetch(API_PATH, { cache: 'no-store' })
 
-    if (!res.ok || !isJsonResponse(res)) return null
+    if (!res.ok || res.status === 404 || res.status === 405 || !isJsonResponse(res)) return null
     return await res.json()
   } catch {
     return null
